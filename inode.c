@@ -43,7 +43,12 @@ struct inode *load_inodes(const char *master_file_table) {
 }
 
 void fs_shutdown(struct inode *inode) {
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
+  if ((*inode).is_directory)
+    for (int i = 0; i < (*inode).num_entries; i++) {
+      fs_shutdown((struct inode *)(*inode).entries[i]);
+    }
+
+  free(inode);
   return;
 }
 
