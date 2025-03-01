@@ -8,12 +8,12 @@
  * This is necessary to have several examples in the same
  * directory.
  */
-void set_block_allocation_table_name( const char* str );
+void set_block_allocation_table_name(const char *str);
 
 /* Release the memory for the block allocation table file
  * name before exit().
  */
-void release_block_allocation_table_name( );
+void release_block_allocation_table_name();
 
 /* Set all the blocks in our simulated disk into an unused
  * state.
@@ -28,7 +28,7 @@ int format_disk();
  * The function can return -1 if consecutive blocks like this
  * are available.
  */
-int allocate_block( int extent_size );
+int allocate_block(int extent_size);
 
 /* Free the block with the given ID.
  * This functions returns 0 if the block was freed
