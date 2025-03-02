@@ -46,7 +46,6 @@ possible that there is not enough space on the simulated disk, meaning that
 a call to allocate_block will fail. You should release all resources in that
 case and return NULL.
  */
-// TODO: update entries in parent inode to include the new file.
 struct inode *create_file(struct inode *parent, const char *name, char readonly,
                           int size_in_bytes) {
   uint32_t blockno = -1;
@@ -94,6 +93,10 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
                                  .num_entries = num_entries,
                                  .entries = entries};
 
+  // TODO: update entries in parent inode to include the new file.
+  // Do it by allocating a new entries array with room for one more, filling it
+  // with the old entries, adding the new one, freeing the old memory, then
+  // updating the pointer and count on the parent inode.
   return return_inode;
 }
 
