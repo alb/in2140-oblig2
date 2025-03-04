@@ -1,15 +1,138 @@
 #include "inode.h"
 #include "block_allocation.h"
 
-#include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+// Function that gets a new inode id incrementally.
+// *NOT IMPLEMENTED*
+uint32_t get_new_id() {
+  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
+  return 0;
+}
+
+// Function that copies a string to heap and returns pointer to the new string
+char *copy_string(const char *s) {
+  char *copy;
+  if ((copy = malloc(strlen(s))) == NULL)
+    return NULL;
+
+  int i = 0;
+  while (s[i] != '\0') {
+    copy[i] = s[i];
+    i++;
+  }
+
+  copy[i] = '\0';
+  return copy;
+}
+
+// Function that frees all allocated memory and blocks for create_file upon
+// failure
+void free_create_file_resources(struct inode *i, uintptr_t *e, char *name,
+                                uint32_t block) {
+  free(i);
+  free(e);
+  free(name);
+  free_block(block);
+}
+
+// Function to add new to parent inode's entries. Returns 1 upon failure and 0
+// upon success.
+int add_inode(struct inode *parent, struct inode *new) {
+  uintptr_t *new_entries;
+
+  // Create a new entries array with room for one more entry
+  if ((new_entries = malloc(((*parent).num_entries + 1) *
+                            sizeof((*parent).entries))) == NULL)
+    return 1;
+
+  // Copy old entries into new memory location
+  for (int i = 0; i < (*parent).num_entries; i++) {
+    new_entries[i] = (*parent).entries[i];
+  }
+
+  // Add the new entry
+  new_entries[(*parent).num_entries] = (uintptr_t)new;
+
+  // Free the old entries memory
+  free((*parent).entries);
+
+  // Update the pointer and number of entries
+  (*parent).entries = new_entries;
+  (*parent).num_entries++;
+
+  return 0;
+}
+
+/*
+ * The function takes as parameter a pointer to the inode of the directory
+that will contain the new file. Within this directory, the name must be
+unique. If there is a file or directory with the same name there already,
+then the function should return NULL without doing anything. The parameter
+size_in_bytes gives the number of bytes that must be stored on the simulated
+disk for this file. The necessary number of blocks must allocated using the
+function allocate_block, which is implemented in allocation.c. It is
+possible that there is not enough space on the simulated disk, meaning that
+a call to allocate_block will fail. You should release all resources in that
+case and return NULL.
+ */
 struct inode *create_file(struct inode *parent, const char *name, char readonly,
                           int size_in_bytes) {
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
-  return NULL;
+  uint32_t blockno = -1;
+  struct inode *return_inode = NULL;
+  uint32_t num_entries = 1;
+  uintptr_t *entries = NULL;
+  char *name_pointer = NULL;
+  uint32_t extent;
+
+  // If file already exists, do nothing
+  if (find_inode_by_name(parent, name) != NULL)
+    return NULL;
+
+  // Calculates ceil(size_in_bytes/BLOCKSIZE)
+  extent = (size_in_bytes + BLOCKSIZE - 1) / BLOCKSIZE;
+  // If block allocation fails, do nothing
+  if ((blockno = allocate_block(extent)) == -1) {
+    fprintf(stderr, "Failed block allocation. Note that splitting file's "
+                    "blocks is not yet implemented.");
+    return NULL;
+  }
+
+  // If memory allocation fails, do nothing
+  if ((name_pointer = copy_string(name)) == NULL) {
+    free_create_file_resources(return_inode, entries, name_pointer, blockno);
+    return NULL;
+  }
+  if ((return_inode = malloc(sizeof(struct inode))) == NULL) {
+    free_create_file_resources(return_inode, entries, name_pointer, blockno);
+    return NULL;
+  }
+  if ((entries = malloc(sizeof(uintptr_t) * extent)) == NULL) {
+    free_create_file_resources(return_inode, entries, name_pointer, blockno);
+    return NULL;
+  }
+
+  // creating a 64-bit integer with the block number as the first 32 bits and
+  // the extent as the last.
+  *entries = ((uintptr_t)blockno << 32) | extent;
+
+  *return_inode = (struct inode){.id = get_new_id(),
+                                 .name = name_pointer,
+                                 .is_directory = 0,
+                                 .is_readonly = readonly,
+                                 .filesize = (uint32_t)size_in_bytes,
+                                 .num_entries = num_entries,
+                                 .entries = entries};
+
+  if (!add_inode(parent, return_inode)) {
+    free_create_file_resources(return_inode, entries, name_pointer, blockno);
+    return NULL;
+  }
+
+  return return_inode;
 }
 
 struct inode *create_dir(struct inode *parent, const char *name) {
