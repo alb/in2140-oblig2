@@ -39,16 +39,24 @@ void free_create_file_resources(struct inode *i, uintptr_t *e, char *name,
   free_block(block);
 }
 
+// Function that deletes an inode to_delete from inode parent.
+// Returns: 0 on success and -1 on failure.
+// IMPORTANT: Only use when all references in to_delete are freed.
 int delete_inode(struct inode *parent, struct inode *to_delete) {
-  uintptr_t *new_entries;
-  int i;
 
-  // Move the inode to delete to the last position in entries
-  for (i = 0; i < (*parent).num_entries; i++) {
+  uintptr_t *new_entries;
+
+  if (!(*parent).is_directory) {
+    return -1;
+  }
+
+  // Overwrite the pointer to the inode to delete with the one in the last
+  // position. Also free the memory of the inode to delete.
+  for (int i = 0; i < (*parent).num_entries; i++) {
     struct inode *entry = (struct inode *)((*parent).entries[i]);
     if ((*entry).id == (*to_delete).id) {
       (*parent).entries[i] = (*parent).entries[(*parent).num_entries - 1];
-      (*parent).entries[(*parent).num_entries - 1] = (uintptr_t)entry;
+      free(entry);
       break;
     }
   }
