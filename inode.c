@@ -34,6 +34,32 @@ void free_create_file_resources(struct inode *i, uintptr_t *e, char *name,
   free_block(block);
 }
 
+int add_inode(struct inode *parent, struct inode *new) {
+  uintptr_t *new_entries;
+
+  // Create a new entries array with room for one more entry
+  if ((new_entries = malloc(((*parent).num_entries + 1) *
+                            sizeof((*parent).entries))) == NULL)
+    return 1;
+
+  // Copy old entries into new memory location
+  for (int i = 0; i < (*parent).num_entries; i++) {
+    new_entries[i] = (*parent).entries[i];
+  }
+
+  // Add the new entry
+  new_entries[(*parent).num_entries] = (uintptr_t)new;
+
+  // Free the old entries memory
+  free((*parent).entries);
+
+  // Update the pointer and number of entries
+  (*parent).entries = new_entries;
+  (*parent).num_entries++;
+
+  return 0;
+}
+
 /*
  * The function takes as parameter a pointer to the inode of the directory
 that will contain the new file. Within this directory, the name must be
@@ -93,10 +119,11 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
                                  .num_entries = num_entries,
                                  .entries = entries};
 
-  // TODO: update entries in parent inode to include the new file.
-  // Do it by allocating a new entries array with room for one more, filling it
-  // with the old entries, adding the new one, freeing the old memory, then
-  // updating the pointer and count on the parent inode.
+  if (!add_inode(parent, return_inode)) {
+    free_create_file_resources(return_inode, entries, name_pointer, blockno);
+    return NULL;
+  }
+
   return return_inode;
 }
 
