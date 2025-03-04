@@ -67,18 +67,9 @@ int add_inode(struct inode *parent, struct inode *new) {
   return 0;
 }
 
-/*
- * The function takes as parameter a pointer to the inode of the directory
-that will contain the new file. Within this directory, the name must be
-unique. If there is a file or directory with the same name there already,
-then the function should return NULL without doing anything. The parameter
-size_in_bytes gives the number of bytes that must be stored on the simulated
-disk for this file. The necessary number of blocks must allocated using the
-function allocate_block, which is implemented in allocation.c. It is
-possible that there is not enough space on the simulated disk, meaning that
-a call to allocate_block will fail. You should release all resources in that
-case and return NULL.
- */
+// Function that creates a new file in folder parent, with name name, is
+// readonly if readonly with size size_in_bytes.
+// Returns NULL upon failure and the new file upon success.
 struct inode *create_file(struct inode *parent, const char *name, char readonly,
                           int size_in_bytes) {
   uint32_t blockno = -1;
@@ -135,9 +126,33 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
   return return_inode;
 }
 
+// Function that creates a new directory in directory parent with name name.
+// Returns NULL upon failure and the new directory upon success.
 struct inode *create_dir(struct inode *parent, const char *name) {
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
-  return NULL;
+  struct inode *new_dir = NULL;
+  char *name_pointer = NULL;
+
+  // If memory allocation fails, do nothing
+  if ((name_pointer = copy_string(name)) == NULL)
+    return NULL;
+  if ((new_dir = malloc(sizeof(struct inode))) == NULL) {
+    free(name_pointer);
+    return NULL;
+  }
+
+  *new_dir = (struct inode){
+      .id = get_new_id(),
+      .name = name_pointer,
+      .is_directory = 1,
+      .is_readonly = 0,
+      .filesize = 0,
+      .num_entries = 0,
+      .entries = NULL,
+  };
+
+  add_inode(parent, new_dir);
+
+  return new_dir;
 }
 
 struct inode *find_inode_by_name(struct inode *parent, const char *name) {
