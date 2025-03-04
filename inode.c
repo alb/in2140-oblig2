@@ -194,21 +194,23 @@ struct inode *find_inode_by_name(struct inode *parent, const char *name) {
   return NULL;
 }
 
+// Function that deletes a file.
+// Returns 0 on success and -1 on failure.
 int delete_file(struct inode *parent, struct inode *node) {
-  if ((*node).is_directory || !(*parent).is_directory)
+
+  if (!(*parent).is_directory || (*node).is_directory)
     return -1;
 
+  // Free all the file's memory blocks
   for (int i = 0; i < (*node).num_entries; i++) {
-    uint32_t blockno = (uint32_t)((*node).entries[i] >> 32);
-
-    for (int j = 0; j < (int)(*node).entries[i]; j++) {
-      free_block((int)blockno + j);
+    int extent = (int)(*node).entries[i];
+    int blockno = (int)((*node).entries[i] >> 32);
+    for (int j = 0; j < extent; j++) {
+      free_block(blockno + j);
     }
   }
 
-  delete_inode(parent, node);
-
-  return 0;
+  return delete_inode(parent, node);
 }
 
 int delete_dir(struct inode *parent, struct inode *node) {
