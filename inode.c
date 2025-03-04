@@ -231,6 +231,8 @@ void fs_shutdown(struct inode *inode) {
       fs_shutdown((struct inode *)(*inode).entries[i]);
     }
 
+  free((*inode).name);
+  free((*inode).entries);
   free(inode);
   return;
 }
