@@ -39,29 +39,26 @@ void free_create_file_resources(struct inode *i, uintptr_t *e, char *name,
   free_block(block);
 }
 
-int delete_inode(struct inode *parent, struct inode *to_delete) {
-  uintptr_t *new_entries;
-  int i;
+// Function that deletes an inode node from inode parent by moving it to
+// the end of the entries array and redusing the num_entries.
+// IMPORTANT: Only use on empty directories or files where all blocks are freed
+// and when certain that node is in the directory parent.
+void delete_inode(struct inode *parent, struct inode *node) {
 
-  // Move the inode to delete to the last position in entries
-  for (i = 0; i < (*parent).num_entries; i++) {
+  free((*node).name);
+  free((*node).entries);
+
+  // Overwrite the pointer to the inode to delete with the one in the last
+  // position.
+  for (int i = 0; i < (*parent).num_entries; i++) {
     struct inode *entry = (struct inode *)((*parent).entries[i]);
-    if ((*entry).id == (*to_delete).id) {
+    if ((*entry).id == (*node).id) {
       (*parent).entries[i] = (*parent).entries[(*parent).num_entries - 1];
-      (*parent).entries[(*parent).num_entries - 1] = (uintptr_t)entry;
       break;
     }
   }
 
-  // Reallocate the memory with one less entry
-  if ((new_entries = realloc((*parent).entries,
-                             ((*parent).num_entries - 1) *
-                                 sizeof((*parent).entries[0]))) == NULL)
-    return -1;
-
-  (*parent).entries = new_entries;
-
-  return 0;
+  (*parent).num_entries--;
 }
 
 // Function to add new to parent inode's entries. Returns 1 upon failure and 0
@@ -185,15 +182,18 @@ struct inode *find_inode_by_name(struct inode *parent, const char *name) {
   return NULL;
 }
 
+// Function that deletes a file.
+// Returns 0 on success and -1 on failure.
 int delete_file(struct inode *parent, struct inode *node) {
-  if ((*node).is_directory || !(*parent).is_directory)
+  if (!(*parent).is_directory || (*node).is_directory ||
+      find_inode_by_name(parent, (*node).name) == NULL)
     return -1;
-
+  // Free all the file's memory blocks
   for (int i = 0; i < (*node).num_entries; i++) {
-    uint32_t blockno = (uint32_t)((*node).entries[i] >> 32);
-
-    for (int j = 0; j < (int)(*node).entries[i]; j++) {
-      free_block((int)blockno + j);
+    int extent = (int)(*node).entries[i];
+    int blockno = (int)((*node).entries[i] >> 32);
+    for (int j = 0; j < extent; j++) {
+      free_block(blockno + j);
     }
   }
 
@@ -202,9 +202,17 @@ int delete_file(struct inode *parent, struct inode *node) {
   return 0;
 }
 
+// Function that deletes an empty directory.
+// Returns 0 on success and -1 on failure.
 int delete_dir(struct inode *parent, struct inode *node) {
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
-  return -1;
+  if (!(*parent).is_directory || !(*node).is_directory ||
+      (*node).num_entries != 0 ||
+      find_inode_by_name(parent, (*node).name) == NULL)
+    return -1;
+
+  delete_inode(parent, node);
+
+  return 0;
 }
 
 void save_inodes(const char *master_file_table, struct inode *root) {
