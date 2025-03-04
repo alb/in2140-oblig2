@@ -185,15 +185,9 @@ struct inode *find_inode_by_name(struct inode *parent, const char *name) {
 // Function that deletes a file.
 // Returns 0 on success and -1 on failure.
 int delete_file(struct inode *parent, struct inode *node) {
-
-  // If parent is not a directory or node is not a file, do nothing
-  if (!(*parent).is_directory || (*node).is_directory)
+  if (!(*parent).is_directory || (*node).is_directory ||
+      find_inode_by_name(parent, (*node).name) == NULL)
     return -1;
-
-  // If file does not exist in specified directory, do nothing
-  if (find_inode_by_name(parent, (*node).name) == NULL)
-    return -1;
-
   // Free all the file's memory blocks
   for (int i = 0; i < (*node).num_entries; i++) {
     int extent = (int)(*node).entries[i];
@@ -211,11 +205,9 @@ int delete_file(struct inode *parent, struct inode *node) {
 // Function that deletes an empty directory.
 // Returns 0 on success and -1 on failure.
 int delete_dir(struct inode *parent, struct inode *node) {
-  // If parent is not a directory or node is not a directory, do nothing
-  if (!(*parent).is_directory || !(*node).is_directory)
-    return -1;
-
-  if ((*node).num_entries != 0)
+  if (!(*parent).is_directory || !(*node).is_directory ||
+      (*node).num_entries != 0 ||
+      find_inode_by_name(parent, (*node).name) == NULL)
     return -1;
 
   delete_inode(parent, node);
