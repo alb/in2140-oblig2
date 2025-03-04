@@ -34,6 +34,8 @@ void free_create_file_resources(struct inode *i, uintptr_t *e, char *name,
   free_block(block);
 }
 
+// Function to add new to parent inode's entries. Returns 1 upon failure and 0
+// upon success.
 int add_inode(struct inode *parent, struct inode *new) {
   uintptr_t *new_entries;
 
