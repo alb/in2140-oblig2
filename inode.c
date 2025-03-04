@@ -39,6 +39,31 @@ void free_create_file_resources(struct inode *i, uintptr_t *e, char *name,
   free_block(block);
 }
 
+int delete_inode(struct inode *parent, struct inode *to_delete) {
+  uintptr_t *new_entries;
+  int i;
+
+  // Move the inode to delete to the last position in entries
+  for (i = 0; i < (*parent).num_entries; i++) {
+    struct inode *entry = (struct inode *)((*parent).entries[i]);
+    if ((*entry).id == (*to_delete).id) {
+      (*parent).entries[i] = (*parent).entries[(*parent).num_entries - 1];
+      (*parent).entries[(*parent).num_entries - 1] = (uintptr_t)entry;
+      break;
+    }
+  }
+
+  // Reallocate the memory with one less entry
+  if ((new_entries = realloc((*parent).entries,
+                             ((*parent).num_entries - 1) *
+                                 sizeof((*parent).entries[0]))) == NULL)
+    return -1;
+
+  (*parent).entries = new_entries;
+
+  return 0;
+}
+
 // Function to add new to parent inode's entries. Returns 1 upon failure and 0
 // upon success.
 int add_inode(struct inode *parent, struct inode *new) {
@@ -46,7 +71,7 @@ int add_inode(struct inode *parent, struct inode *new) {
 
   // Create a new entries array with room for one more entry
   if ((new_entries = malloc(((*parent).num_entries + 1) *
-                            sizeof((*parent).entries))) == NULL)
+                            sizeof((*parent).entries[0]))) == NULL)
     return 1;
 
   // Copy old entries into new memory location
@@ -161,8 +186,20 @@ struct inode *find_inode_by_name(struct inode *parent, const char *name) {
 }
 
 int delete_file(struct inode *parent, struct inode *node) {
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
-  return -1;
+  if ((*node).is_directory || !(*parent).is_directory)
+    return -1;
+
+  for (int i = 0; i < (*node).num_entries; i++) {
+    uint32_t blockno = (uint32_t)((*node).entries[i] >> 32);
+
+    for (int j = 0; j < (int)(*node).entries[i]; j++) {
+      free_block((int)blockno + j);
+    }
+  }
+
+  delete_inode(parent, node);
+
+  return 0;
 }
 
 int delete_dir(struct inode *parent, struct inode *node) {
