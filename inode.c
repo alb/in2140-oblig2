@@ -203,7 +203,9 @@ int delete_file(struct inode *parent, struct inode *node) {
     }
   }
 
-  return delete_inode(parent, node);
+  delete_inode(parent, node);
+
+  return 0;
 }
 
 // Function that deletes an empty directory.
