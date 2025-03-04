@@ -56,7 +56,6 @@ int delete_inode(struct inode *parent, struct inode *to_delete) {
     struct inode *entry = (struct inode *)((*parent).entries[i]);
     if ((*entry).id == (*to_delete).id) {
       (*parent).entries[i] = (*parent).entries[(*parent).num_entries - 1];
-      free(entry);
       break;
     }
   }
