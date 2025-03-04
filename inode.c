@@ -86,13 +86,14 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
   uint32_t num_entries = 1;
   uintptr_t *entries = NULL;
   char *name_pointer = NULL;
-
-  uint32_t extent = (size_in_bytes + BLOCKSIZE - 1) / BLOCKSIZE;
+  uint32_t extent;
 
   // If file already exists, do nothing
   if (find_inode_by_name(parent, name) != NULL)
     return NULL;
 
+  // Calculates ceil(size_in_bytes/BLOCKSIZE)
+  extent = (size_in_bytes + BLOCKSIZE - 1) / BLOCKSIZE;
   // If block allocation fails, do nothing
   if ((blockno = allocate_block(extent)) == -1) {
     fprintf(stderr, "Failed block allocation. Note that splitting file's "
