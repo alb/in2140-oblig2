@@ -6,11 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Function that gets a new inode id incrementally.
+// *NOT IMPLEMENTED*
 uint32_t get_new_id() {
   fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
   return 0;
 }
 
+// Function that copies a string to heap and returns pointer to the new string
 char *copy_string(const char *s) {
   char *copy;
   if ((copy = malloc(strlen(s))) == NULL)
@@ -26,6 +29,8 @@ char *copy_string(const char *s) {
   return copy;
 }
 
+// Function that frees all allocated memory and blocks for create_file upon
+// failure
 void free_create_file_resources(struct inode *i, uintptr_t *e, char *name,
                                 uint32_t block) {
   free(i);
