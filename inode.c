@@ -60,6 +60,7 @@ int delete_inode(struct inode *parent, struct inode *to_delete) {
     return -1;
 
   (*parent).entries = new_entries;
+  (*parent).num_entries--;
 
   return 0;
 }
