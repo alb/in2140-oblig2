@@ -286,8 +286,10 @@ char * write(char *writer, uint32_t bytes) {
   return writer;
 }
 
+// Function that writes inode and all its children to writer 
 char *save_inodes_recursive(char *writer, struct inode *inode) {
-  // Write to the writer and update it to point to the next character
+  // Write id and name-length to writer. 
+  // TODO: Should there be room for a termination character?
   writer = write(writer, (*inode).id);
   writer = write(writer, strlen((*inode).name));
 
@@ -302,13 +304,18 @@ char *save_inodes_recursive(char *writer, struct inode *inode) {
 
   write(writer, (*inode).num_entries);
   for (int i = 0; i < (*inode).num_entries; i++) {
-    uint32_t blockno;
-    uint32_t extent;
-
-    if ((*inode).is_directory) {}
+    if ((*inode).is_directory) {
+	writer = write(writer, (*inode).entries[i].id);
+	writer = write(writer, 0);
+    }
     else {
+	uint32_t blockno;
+	uint32_t extent;
 
 	unpack_entry((*inode).entries[i], blockno, extent);
+	writer = write(writer, blockno);
+	writer = write(writer, extent);
+
     }
 
   }
