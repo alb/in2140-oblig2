@@ -276,13 +276,28 @@ int delete_dir(struct inode *parent, struct inode *node) {
   return delete_inode(parent, node);
 }
 
-char *save_inodes(const char *master_file_table, struct inode *root) {
+char *save_inodes_recursive(char *writer, struct inode *inode) {
+  // Write to the writer and update it to point to the next character
+
+  // If the inode is not a directory, return
+  if (!(*inode).is_directory)
+    return writer;
+
+
+  for (int i = 0; i < (*inode).num_entries;i++) {
+    writer = save_inodes_recursive(writer, (struct inode *)(*inode).entries[i]);
+  }
+
+  return writer;
+}
+
+void save_inodes(const char *master_file_table, struct inode *root) {
 
 
 
 
   fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
-  return NULL;
+  return;
 }
 
 struct inode *load_inodes(const char *master_file_table) {
