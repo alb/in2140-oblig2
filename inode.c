@@ -61,7 +61,8 @@ void delete_inode(struct inode *parent, struct inode *node) {
   (*parent).num_entries--;
 }
 
-// Function to add new to parent inode's entries. Returns 1 upon failure and 0
+// Function to add new to parent inode's entries.
+// Returns 0 on success and -1 on failure.
 // upon success.
 int add_inode(struct inode *parent, struct inode *new) {
   uintptr_t *new_entries;
@@ -70,7 +71,7 @@ int add_inode(struct inode *parent, struct inode *new) {
   if ((new_entries = realloc((*parent).entries,
                              ((*parent).num_entries + 1) *
                                  sizeof((*parent).entries[0]))) == NULL)
-    return 1;
+    return -1;
 
   // Add the new entry
   new_entries[(*parent).num_entries] = (uintptr_t)new;
