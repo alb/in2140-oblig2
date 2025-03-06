@@ -79,7 +79,7 @@ int delete_dir(struct inode *parent, struct inode *node);
  * to the master file table, following the oblig instructions.
  * No inodes are changed.
  */
-void save_inodes(const char *master_file_table, struct inode *root);
+char *save_inodes(const char *master_file_table, struct inode *root);
 
 /* Read the file master file table and create an inode in memory
  * for every inode that is stored in the file. Set the pointers

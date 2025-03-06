@@ -276,9 +276,13 @@ int delete_dir(struct inode *parent, struct inode *node) {
   return delete_inode(parent, node);
 }
 
-void save_inodes(const char *master_file_table, struct inode *root) {
+char *save_inodes(const char *master_file_table, struct inode *root) {
+
+
+
+
   fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
-  return;
+  return NULL;
 }
 
 struct inode *load_inodes(const char *master_file_table) {
