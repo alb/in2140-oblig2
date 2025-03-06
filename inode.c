@@ -44,16 +44,15 @@ char *copy_string(const char *s) {
   return copy;
 }
 
-// Function that frees all allocated memory and blocks for create_file upon
-// failure
-void free_create_file_resources(struct inode *new_file, uintptr_t *entries,
-                                char *name, uint32_t no_entries) {
+// Function that frees all allocated memory and blocks for a file.
+void free_file(struct inode *file, uintptr_t *entries, char *name,
+               uint32_t no_entries) {
   for (uint32_t i = 0; i < no_entries; i++) {
     uint32_t blockno;
     unpack_entry(entries[i], &blockno, NULL);
     free_block(blockno);
   }
-  free(new_file);
+  free(file);
   free(entries);
   free(name);
 }
@@ -178,24 +177,24 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
   }
   // If block allocation fails, do nothing
   if (allocate_blocks(entries, &num_entries, entire_file_blockno) == NULL) {
-    free_create_file_resources(new_file, entries, name_pointer, num_entries);
+    free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
 
   // Reallocate entries array to be only the used size.
   if ((realloc_entries = realloc(entries, sizeof(uintptr_t) * num_entries)) ==
       NULL) {
-    free_create_file_resources(new_file, entries, name_pointer, num_entries);
+    free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
 
   // If memory allocation fails, do nothing
   if ((name_pointer = copy_string(name)) == NULL) {
-    free_create_file_resources(new_file, entries, name_pointer, num_entries);
+    free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
   if ((new_file = malloc(sizeof(struct inode))) == NULL) {
-    free_create_file_resources(new_file, entries, name_pointer, num_entries);
+    free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
 
@@ -208,7 +207,7 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
                              .entries = entries};
 
   if (!add_inode(parent, new_file)) {
-    free_create_file_resources(new_file, entries, name_pointer, num_entries);
+    free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
 
