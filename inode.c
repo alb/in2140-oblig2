@@ -103,18 +103,14 @@ int add_inode(struct inode *parent, struct inode *new) {
 
 // Function to allocate the blocks needed for a file. Entries must have room for
 // ceil(filesize/BLOCKSIZE) entries.
-// IMPORTANT: Does not free allocated blocks if it fails.
+// IMPORTANT: Does not free allocated blocks if it fails. Does, however, keep
+// track of the number of entries so they can be freed by free_file.
 // Returns pointer to the last added entry on success, NULL on failure.
 uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
                            uint32_t blocks_to_allocate) {
 
   uint32_t blockno;
   uint32_t extent = (blocks_to_allocate <= 4) ? blocks_to_allocate : 4;
-
-  // TODO: Should not need this return, remove.
-  // If there are no blocks to allocate, return.
-  // if (!blocks_to_allocate)
-  // return 0;
 
   // If successfully allocating extent blocks, add to entries
   if (!(blockno = allocate_block(extent))) {
