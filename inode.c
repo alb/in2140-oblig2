@@ -13,6 +13,21 @@ uint32_t get_new_id() {
   return 0;
 }
 
+// Function that combines blockno and extent into a single 64-bit variable.
+// Returns: The entry made from blockno and extent.
+uintptr_t create_entry(uint32_t blockno, uint32_t extent) {
+  return ((uintptr_t)blockno << 32) | extent;
+}
+
+// Function that stores the blockno and extent in an entry to blockno and extent
+// pointers. Is NULL-safe.
+void unpack_entry(uintptr_t entry, uint32_t *blockno, uint32_t *extent) {
+  if (blockno != NULL)
+    *blockno = (uint32_t)(entry >> 32);
+  if (extent != NULL)
+    *extent = (uint32_t)entry;
+}
+
 // Function that copies a string to heap and returns pointer to the new string
 char *copy_string(const char *s) {
   char *copy;
@@ -29,14 +44,19 @@ char *copy_string(const char *s) {
   return copy;
 }
 
-// Function that frees all allocated memory and blocks for create_file upon
-// failure
-void free_create_file_resources(struct inode *i, uintptr_t *e, char *name,
-                                uint32_t block) {
-  free(i);
-  free(e);
+// Function that frees all allocated memory and blocks for a file.
+void free_file(struct inode *file, uintptr_t *entries, char *name,
+               uint32_t no_entries) {
+  for (uint32_t i = 0; i < no_entries; i++) {
+    uint32_t blockno;
+    uint32_t extent;
+    unpack_entry(entries[i], &blockno, &extent);
+    for (uint32_t j = 0; j < extent; j++)
+      free_block(blockno + j);
+  }
+  free(file);
+  free(entries);
   free(name);
-  free_block(block);
 }
 
 // Function that deletes an inode node from inode parent by moving it to
@@ -83,48 +103,99 @@ int add_inode(struct inode *parent, struct inode *new) {
   return 0;
 }
 
+// Function to allocate the blocks needed for a file. Entries must have room for
+// ceil(filesize/BLOCKSIZE) entries.
+// IMPORTANT: Does not free allocated blocks if it fails. Does, however, keep
+// track of the number of entries so they can be freed by free_file.
+// Returns pointer to the last added entry on success, NULL on failure.
+uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
+                           uint32_t blocks_to_allocate) {
+  uint32_t blockno;
+  uint32_t extent = (blocks_to_allocate <= 4) ? blocks_to_allocate : 4;
+
+  // If successfully allocating extent blocks, add to entries
+  if (!(blockno = allocate_block(extent))) {
+    *entries = create_entry(blockno, extent);
+    entries++;
+    (*num_entries)++;
+  }
+  // If allocating one block has failed, there is no more room on the disk or
+  // other failure, return failure value
+  else if (extent == 1) {
+    return NULL;
+  }
+  // If allocating extent > 1 blocks fails, allocate twice with extents 1 and
+  // extent-1.
+  else {
+    // If allocating one block fails, return failure
+    if ((blockno = allocate_block(1)))
+      return NULL;
+
+    // Adding allocated block to entries
+    *entries = create_entry(blockno, 1);
+    (*num_entries)++;
+    entries++;
+
+    // Allocating the rest of the blocks by this function. If it fails, return
+    // failure.
+    if ((entries = allocate_blocks(entries, num_entries, extent - 1)) == NULL)
+      return NULL;
+
+    entries++;
+  }
+
+  // If there are more blocks to allocate, continue recursively
+  if (!(blocks_to_allocate - extent)) {
+    return allocate_blocks(entries + extent, num_entries,
+                           blocks_to_allocate - extent);
+  }
+
+  // If there are no more blocks to allocate, return success.
+  return entries - 1;
+}
+
 // Function that creates a new file in folder parent, with name name, is
 // readonly if readonly with size size_in_bytes.
 // Returns NULL upon failure and the new file upon success.
 struct inode *create_file(struct inode *parent, const char *name, char readonly,
                           int size_in_bytes) {
-  uint32_t blockno = -1;
   struct inode *new_file = NULL;
-  uint32_t num_entries = 1;
+  uint32_t num_entries = 0;
   uintptr_t *entries = NULL;
+  uintptr_t *realloc_entries;
   char *name_pointer = NULL;
-  uint32_t extent;
+  // Calculates ceil(size_in_bytes/BLOCKSIZE)
+  uint32_t entire_file_blockno = (size_in_bytes + BLOCKSIZE - 1) / BLOCKSIZE;
 
-  // If file already exists, do nothing
-  if (find_inode_by_name(parent, name) != NULL)
+  // If file already exists or size is 0, do nothing
+  if (find_inode_by_name(parent, name) != NULL || !size_in_bytes)
     return NULL;
 
-  // Calculates ceil(size_in_bytes/BLOCKSIZE)
-  extent = (size_in_bytes + BLOCKSIZE - 1) / BLOCKSIZE;
+  if ((entries = malloc(sizeof(uintptr_t) * entire_file_blockno)) == NULL) {
+    return NULL;
+  }
   // If block allocation fails, do nothing
-  if ((blockno = allocate_block(extent)) == -1) {
-    fprintf(stderr, "Failed block allocation. Note that splitting file's "
-                    "blocks is not yet implemented.");
+  if (allocate_blocks(entries, &num_entries, entire_file_blockno) == NULL) {
+    free_file(new_file, entries, name_pointer, num_entries);
+    return NULL;
+  }
+
+  // Reallocate entries array to be only the used size.
+  if ((realloc_entries = realloc(entries, sizeof(uintptr_t) * num_entries)) ==
+      NULL) {
+    free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
 
   // If memory allocation fails, do nothing
   if ((name_pointer = copy_string(name)) == NULL) {
-    free_create_file_resources(new_file, entries, name_pointer, blockno);
+    free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
   if ((new_file = malloc(sizeof(struct inode))) == NULL) {
-    free_create_file_resources(new_file, entries, name_pointer, blockno);
+    free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
-  if ((entries = malloc(sizeof(uintptr_t) * extent)) == NULL) {
-    free_create_file_resources(new_file, entries, name_pointer, blockno);
-    return NULL;
-  }
-
-  // creating a 64-bit integer with the block number as the first 32 bits and
-  // the extent as the last.
-  *entries = ((uintptr_t)blockno << 32) | extent;
 
   *new_file = (struct inode){.id = get_new_id(),
                              .name = name_pointer,
@@ -135,7 +206,7 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
                              .entries = entries};
 
   if (!add_inode(parent, new_file)) {
-    free_create_file_resources(new_file, entries, name_pointer, blockno);
+    free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
 
@@ -188,8 +259,9 @@ int delete_file(struct inode *parent, struct inode *node) {
     return -1;
   // Free all the file's memory blocks
   for (int i = 0; i < (*node).num_entries; i++) {
-    int extent = (int)(*node).entries[i];
-    int blockno = (int)((*node).entries[i] >> 32);
+    uint32_t blockno;
+    uint32_t extent;
+    unpack_entry((*node).entries[i], &blockno, &extent);
     for (int j = 0; j < extent; j++) {
       free_block(blockno + j);
     }
