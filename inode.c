@@ -302,6 +302,7 @@ char *save_inodes_recursive(char *writer, struct inode *inode) {
   *writer = (*inode).is_readonly;
   writer++;
 
+  // TODO: Place loop within if conditions to increase performance
   writer = write(writer, (*inode).num_entries);
   for (int i = 0; i < (*inode).num_entries; i++) {
     if ((*inode).is_directory) {
