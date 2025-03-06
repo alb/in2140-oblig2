@@ -166,7 +166,11 @@ struct inode *create_dir(struct inode *parent, const char *name) {
       .entries = NULL,
   };
 
-  add_inode(parent, new_dir);
+  if (!add_inode(parent, new_dir)) {
+    free(name_pointer);
+    free(new_dir);
+    return NULL;
+  }
 
   return new_dir;
 }
