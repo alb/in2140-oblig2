@@ -257,15 +257,8 @@ int delete_file(struct inode *parent, struct inode *node) {
   if (!(*parent).is_directory || (*node).is_directory ||
       find_inode_by_name(parent, (*node).name) == NULL)
     return -1;
-  // Free all the file's memory blocks
-  for (int i = 0; i < (*node).num_entries; i++) {
-    uint32_t blockno;
-    uint32_t extent;
-    unpack_entry((*node).entries[i], &blockno, &extent);
-    for (int j = 0; j < extent; j++) {
-      free_block(blockno + j);
-    }
-  }
+
+  free_file(node, (*node).entries, (*node).name, (*node).num_entries);
 
   delete_inode(parent, node);
 
