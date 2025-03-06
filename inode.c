@@ -63,13 +63,11 @@ void free_file(struct inode *file, uintptr_t *entries, char *name,
 // the end of the entries array and redusing the num_entries.
 // IMPORTANT: Only use on empty directories or files where all blocks are freed
 // and when certain that node is in the directory parent.
-void delete_inode(struct inode *parent, struct inode *node) {
-
-  free((*node).name);
-  free((*node).entries);
+// Returns 0 on success and -1 on failure.
+int delete_inode(struct inode *parent, struct inode *node) {
 
   // Overwrite the pointer to the inode to delete with the one in the last
-  // position.
+  // position. If the order of the entries is relevant, just bubble it up.
   for (int i = 0; i < (*parent).num_entries; i++) {
     struct inode *entry = (struct inode *)((*parent).entries[i]);
     if ((*entry).id == (*node).id) {
@@ -79,6 +77,15 @@ void delete_inode(struct inode *parent, struct inode *node) {
   }
 
   (*parent).num_entries--;
+
+  uintptr_t *new_entries_parent;
+  if ((new_entries_parent = realloc((*parent).entries,
+                                    (*parent).num_entries *
+                                        sizeof((*parent).entries[0]))) == NULL)
+    return -1;
+
+  (*parent).entries = new_entries_parent;
+  return 0;
 }
 
 // Function to add new to parent inode's entries.
@@ -260,9 +267,7 @@ int delete_file(struct inode *parent, struct inode *node) {
 
   free_file(node, (*node).entries, (*node).name, (*node).num_entries);
 
-  delete_inode(parent, node);
-
-  return 0;
+  return delete_inode(parent, node);
 }
 
 // Function that deletes an empty directory.
@@ -273,9 +278,9 @@ int delete_dir(struct inode *parent, struct inode *node) {
       find_inode_by_name(parent, (*node).name) == NULL)
     return -1;
 
-  delete_inode(parent, node);
+  free((*node).name);
 
-  return 0;
+  return delete_inode(parent, node);
 }
 
 void save_inodes(const char *master_file_table, struct inode *root) {
