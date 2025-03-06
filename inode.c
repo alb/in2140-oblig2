@@ -31,17 +31,10 @@ void unpack_entry(uintptr_t entry, uint32_t *blockno, uint32_t *extent) {
 // Function that copies a string to heap and returns pointer to the new string
 char *copy_string(const char *s) {
   char *copy;
-  if ((copy = malloc(strlen(s))) == NULL)
+  if ((copy = malloc(strlen(s) + 1)) == NULL)
     return NULL;
 
-  int i = 0;
-  while (s[i] != '\0') {
-    copy[i] = s[i];
-    i++;
-  }
-
-  copy[i] = '\0';
-  return copy;
+  return strcpy(copy, s);
 }
 
 // Function that frees all allocated memory and blocks for a file.
