@@ -13,6 +13,21 @@ uint32_t get_new_id() {
   return 0;
 }
 
+// Function that combines blockno and extent into a single 64-bit variable.
+// Returns: The entry made from blockno and extent.
+uintptr_t create_entry(uint32_t blockno, uint32_t extent) {
+  return ((uintptr_t)blockno << 32) | extent;
+}
+
+// Function that stores the blockno and extent in an entry to blockno and extent
+// pointers. Is NULL-safe.
+void unpack_entry(uintptr_t entry, uint32_t *blockno, uint32_t *extent) {
+  if (blockno != NULL)
+    *blockno = (uint32_t)(entry >> 32);
+  if (extent != NULL)
+    *extent = (uint32_t)entry;
+}
+
 // Function that copies a string to heap and returns pointer to the new string
 char *copy_string(const char *s) {
   char *copy;
@@ -31,10 +46,14 @@ char *copy_string(const char *s) {
 
 // Function that frees all allocated memory and blocks for create_file upon
 // failure
-void free_create_file_resources(struct inode *i, uintptr_t *entries, char *name,
-                                uint32_t no_entries) {
-  fprintf(stderr, "Must loop through entries and free all blocks");
-  free(i);
+void free_create_file_resources(struct inode *new_file, uintptr_t *entries,
+                                char *name, uint32_t no_entries) {
+  for (uint32_t i = 0; i < no_entries; i++) {
+    uint32_t blockno;
+    unpack_entry(entries[i], &blockno, NULL);
+    free_block(blockno);
+  }
+  free(new_file);
   free(entries);
   free(name);
 }
@@ -100,7 +119,7 @@ uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
 
   // If successfully allocating extent blocks, add to entries
   if (!(blockno = allocate_block(extent))) {
-    *entries = ((uintptr_t)blockno << 32) | extent;
+    *entries = create_entry(blockno, extent);
     entries++;
     (*num_entries)++;
   }
@@ -117,7 +136,7 @@ uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
       return NULL;
 
     // Adding allocated block to entries
-    *entries = ((uintptr_t)blockno << 32) | 1;
+    *entries = create_entry(blockno, 1);
     (*num_entries)++;
     entries++;
 
@@ -179,10 +198,6 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
     free_create_file_resources(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
-
-  // creating a 64-bit integer with the block number as the first 32 bits and
-  // the extent as the last.
-  // *entries = ((uintptr_t)blockno << 32) | entire_file_blockno;
 
   *new_file = (struct inode){.id = get_new_id(),
                              .name = name_pointer,
@@ -246,8 +261,9 @@ int delete_file(struct inode *parent, struct inode *node) {
     return -1;
   // Free all the file's memory blocks
   for (int i = 0; i < (*node).num_entries; i++) {
-    int extent = (int)(*node).entries[i];
-    int blockno = (int)((*node).entries[i] >> 32);
+    uint32_t blockno;
+    uint32_t extent;
+    unpack_entry((*node).entries[i], &blockno, &extent);
     for (int j = 0; j < extent; j++) {
       free_block(blockno + j);
     }
