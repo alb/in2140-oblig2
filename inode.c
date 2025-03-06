@@ -305,6 +305,12 @@ char *save_inodes_recursive(char *writer, struct inode *inode) {
     uint32_t blockno;
     uint32_t extent;
 
+    if ((*inode).is_directory) {}
+    else {
+
+	unpack_entry((*inode).entries[i], blockno, extent);
+    }
+
   }
 
   // If the inode is not a directory, return
