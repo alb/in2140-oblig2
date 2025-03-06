@@ -89,7 +89,7 @@ int add_inode(struct inode *parent, struct inode *new) {
 struct inode *create_file(struct inode *parent, const char *name, char readonly,
                           int size_in_bytes) {
   uint32_t blockno = -1;
-  struct inode *return_inode = NULL;
+  struct inode *new_file = NULL;
   uint32_t num_entries = 1;
   uintptr_t *entries = NULL;
   char *name_pointer = NULL;
@@ -110,15 +110,15 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
 
   // If memory allocation fails, do nothing
   if ((name_pointer = copy_string(name)) == NULL) {
-    free_create_file_resources(return_inode, entries, name_pointer, blockno);
+    free_create_file_resources(new_file, entries, name_pointer, blockno);
     return NULL;
   }
-  if ((return_inode = malloc(sizeof(struct inode))) == NULL) {
-    free_create_file_resources(return_inode, entries, name_pointer, blockno);
+  if ((new_file = malloc(sizeof(struct inode))) == NULL) {
+    free_create_file_resources(new_file, entries, name_pointer, blockno);
     return NULL;
   }
   if ((entries = malloc(sizeof(uintptr_t) * extent)) == NULL) {
-    free_create_file_resources(return_inode, entries, name_pointer, blockno);
+    free_create_file_resources(new_file, entries, name_pointer, blockno);
     return NULL;
   }
 
@@ -126,20 +126,20 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
   // the extent as the last.
   *entries = ((uintptr_t)blockno << 32) | extent;
 
-  *return_inode = (struct inode){.id = get_new_id(),
-                                 .name = name_pointer,
-                                 .is_directory = 0,
-                                 .is_readonly = readonly,
-                                 .filesize = (uint32_t)size_in_bytes,
-                                 .num_entries = num_entries,
-                                 .entries = entries};
+  *new_file = (struct inode){.id = get_new_id(),
+                             .name = name_pointer,
+                             .is_directory = 0,
+                             .is_readonly = readonly,
+                             .filesize = (uint32_t)size_in_bytes,
+                             .num_entries = num_entries,
+                             .entries = entries};
 
-  if (!add_inode(parent, return_inode)) {
-    free_create_file_resources(return_inode, entries, name_pointer, blockno);
+  if (!add_inode(parent, new_file)) {
+    free_create_file_resources(new_file, entries, name_pointer, blockno);
     return NULL;
   }
 
-  return return_inode;
+  return new_file;
 }
 
 // Function that creates a new directory in directory parent with name name.
