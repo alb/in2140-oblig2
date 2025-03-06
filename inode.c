@@ -284,6 +284,7 @@ char *save_inodes_recursive(char *writer, struct inode *inode) {
     return writer;
 
 
+  // If the inode is a directory, write each inode.
   for (int i = 0; i < (*inode).num_entries;i++) {
     writer = save_inodes_recursive(writer, (struct inode *)(*inode).entries[i]);
   }
@@ -292,12 +293,7 @@ char *save_inodes_recursive(char *writer, struct inode *inode) {
 }
 
 void save_inodes(const char *master_file_table, struct inode *root) {
-
-
-
-
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
-  return;
+  *save_inodes_recursive((char *) master_file_table, root) = '\0';
 }
 
 struct inode *load_inodes(const char *master_file_table) {
