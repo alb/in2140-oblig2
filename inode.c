@@ -276,8 +276,36 @@ int delete_dir(struct inode *parent, struct inode *node) {
   return delete_inode(parent, node);
 }
 
+// Function that writes bytes to writer in little-endian order. 
+char * write(char *writer, uint32_t bytes) {
+  for (int i = 0; i < 4; i++) {
+    *writer = (char) (bytes >> i*8);
+    writer++;
+  }
+
+  return writer;
+}
+
 char *save_inodes_recursive(char *writer, struct inode *inode) {
   // Write to the writer and update it to point to the next character
+  writer = write(writer, (*inode).id);
+  writer = write(writer, strlen((*inode).name));
+
+  for (int i = 0; i < strlen((*inode).name); i++) {
+    *writer = (*inode).name[i];
+    writer++;
+  }
+  *writer = (*inode).is_directory;
+  writer++;
+  *writer = (*inode).is_readonly;
+  writer++;
+
+  write(writer, (*inode).num_entries);
+  for (int i = 0; i < (*inode).num_entries; i++) {
+    uint32_t blockno;
+    uint32_t extent;
+
+  }
 
   // If the inode is not a directory, return
   if (!(*inode).is_directory)
