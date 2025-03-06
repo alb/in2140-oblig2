@@ -302,7 +302,7 @@ char *save_inodes_recursive(char *writer, struct inode *inode) {
   *writer = (*inode).is_readonly;
   writer++;
 
-  write(writer, (*inode).num_entries);
+  writer = write(writer.(*inode).num_entries);
   for (int i = 0; i < (*inode).num_entries; i++) {
     if ((*inode).is_directory) {
 	writer = write(writer, (*inode).entries[i].id);
@@ -315,7 +315,6 @@ char *save_inodes_recursive(char *writer, struct inode *inode) {
 	unpack_entry((*inode).entries[i], blockno, extent);
 	writer = write(writer, blockno);
 	writer = write(writer, extent);
-
     }
 
   }
