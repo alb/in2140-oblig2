@@ -66,21 +66,14 @@ void delete_inode(struct inode *parent, struct inode *node) {
 int add_inode(struct inode *parent, struct inode *new) {
   uintptr_t *new_entries;
 
-  // Create a new entries array with room for one more entry
-  if ((new_entries = malloc(((*parent).num_entries + 1) *
-                            sizeof((*parent).entries[0]))) == NULL)
+  // Reallocate entries array with room for one more entry
+  if ((new_entries = realloc((*parent).entries,
+                             ((*parent).num_entries + 1) *
+                                 sizeof((*parent).entries[0]))) == NULL)
     return 1;
-
-  // Copy old entries into new memory location
-  for (int i = 0; i < (*parent).num_entries; i++) {
-    new_entries[i] = (*parent).entries[i];
-  }
 
   // Add the new entry
   new_entries[(*parent).num_entries] = (uintptr_t)new;
-
-  // Free the old entries memory
-  free((*parent).entries);
 
   // Update the pointer and number of entries
   (*parent).entries = new_entries;
