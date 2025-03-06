@@ -163,7 +163,7 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
     return NULL;
   }
 
-  // Reallocate entries array to be only the needed size.
+  // Reallocate entries array to be only the used size.
   if ((realloc_entries = realloc(entries, sizeof(uintptr_t) * num_entries)) ==
       NULL) {
     free_create_file_resources(new_file, entries, name_pointer, num_entries);
