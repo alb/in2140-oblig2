@@ -49,8 +49,10 @@ void free_file(struct inode *file, uintptr_t *entries, char *name,
                uint32_t no_entries) {
   for (uint32_t i = 0; i < no_entries; i++) {
     uint32_t blockno;
-    unpack_entry(entries[i], &blockno, NULL);
-    free_block(blockno);
+    uint32_t extent;
+    unpack_entry(entries[i], &blockno, &extent);
+    for (uint32_t j = 0; j < extent; j++)
+      free_block(blockno + j);
   }
   free(file);
   free(entries);
@@ -108,7 +110,6 @@ int add_inode(struct inode *parent, struct inode *new) {
 // Returns pointer to the last added entry on success, NULL on failure.
 uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
                            uint32_t blocks_to_allocate) {
-
   uint32_t blockno;
   uint32_t extent = (blocks_to_allocate <= 4) ? blocks_to_allocate : 4;
 
@@ -139,6 +140,8 @@ uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
     // failure.
     if ((entries = allocate_blocks(entries, num_entries, extent - 1)) == NULL)
       return NULL;
+
+    entries++;
   }
 
   // If there are more blocks to allocate, continue recursively
@@ -148,7 +151,7 @@ uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
   }
 
   // If there are no more blocks to allocate, return success.
-  return entries;
+  return entries - 1;
 }
 
 // Function that creates a new file in folder parent, with name name, is
