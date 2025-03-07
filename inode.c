@@ -287,51 +287,43 @@ void write(FILE *f, uint32_t bytes) {
 }
 
 // Function that writes inode and all its children to writer
-char *save_inodes_recursive(char *writer, struct inode *inode) {
-  // Write id and name-length to writer.
-  // TODO: Should there be room for a termination character?
-  writer = write(writer, (*inode).id);
-  writer = write(writer, strlen((*inode).name));
+void save_inodes_recursive(FILE *f, struct inode *root) {
+  // Write the id
+  write(f, (*root).id);
+  // Write the length of name, including termination character
+  write(f, strlen((*root).name) + 1);
 
-  for (int i = 0; i < strlen((*inode).name); i++) {
-    *writer = (*inode).name[i];
-    writer++;
-  }
-  *writer = (*inode).is_directory;
-  writer++;
-  *writer = (*inode).is_readonly;
-  writer++;
+  // Write the name, including termination character
+  fwrite((*root).name, 1, strlen((*root).name) + 1, f);
 
-  // TODO: Place loop within if conditions to increase performance
-  writer = write(writer, (*inode).num_entries);
-  for (int i = 0; i < (*inode).num_entries; i++) {
-    if ((*inode).is_directory) {
-      writer = write(writer, (*inode).entries[i].id);
-      writer = write(writer, 0);
-    } else {
+  // Write dir-flag
+  fwrite(&(*root).is_directory, 1, 1, f);
+
+  // Write rdonly-flag
+  fwrite(&(*root).is_readonly, 1, 1, f);
+
+  if ((*root).is_directory) {
+    for (int i = 0; i < (*root).num_entries; i++) {
+      write(f, (*(struct inode *)(*root).entries[i]).id);
+      write(f, 0);
+      save_inodes_recursive(f, (struct inode *)(*root).entries[i]);
+    }
+  } else {
+    for (int i = 0; i < (*root).num_entries; i++) {
       uint32_t blockno;
       uint32_t extent;
 
-      unpack_entry((*inode).entries[i], blockno, extent);
-      writer = write(writer, blockno);
-      writer = write(writer, extent);
+      unpack_entry((*root).entries[i], &blockno, &extent);
+      write(f, blockno);
+      write(f, extent);
     }
   }
-
-  // If the inode is not a directory, return
-  if (!(*inode).is_directory)
-    return writer;
-
-  // If the inode is a directory, write each inode.
-  for (int i = 0; i < (*inode).num_entries; i++) {
-    writer = save_inodes_recursive(writer, (struct inode *)(*inode).entries[i]);
-  }
-
-  return writer;
 }
 
 void save_inodes(const char *master_file_table, struct inode *root) {
   FILE *f = fopen(master_file_table, "w");
+  save_inodes_recursive(f, root);
+  fclose(f);
 }
 
 struct inode *load_inodes(const char *master_file_table) {
