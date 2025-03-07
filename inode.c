@@ -276,9 +276,54 @@ int delete_dir(struct inode *parent, struct inode *node) {
   return delete_inode(parent, node);
 }
 
+// Function that writes bytes to writer in little-endian order.
+void write(FILE *f, uint32_t bytes) {
+  char writer[5];
+  writer[4] = '\0';
+  for (int i = 0; i < 4; i++) {
+    writer[i] = (char)(bytes >> i * 8);
+  }
+  fwrite(&writer, 1, 4, f);
+}
+
+// Function that writes inode and all its children to writer
+void save_inodes_recursive(FILE *f, struct inode *root) {
+  // Write the id
+  write(f, (*root).id);
+  // Write the length of name, including termination character
+  write(f, strlen((*root).name) + 1);
+
+  // Write the name, including termination character
+  fwrite((*root).name, 1, strlen((*root).name) + 1, f);
+
+  // Write dir-flag
+  fwrite(&(*root).is_directory, 1, 1, f);
+
+  // Write rdonly-flag
+  fwrite(&(*root).is_readonly, 1, 1, f);
+
+  if ((*root).is_directory) {
+    for (int i = 0; i < (*root).num_entries; i++) {
+      write(f, (*(struct inode *)(*root).entries[i]).id);
+      write(f, 0);
+      save_inodes_recursive(f, (struct inode *)(*root).entries[i]);
+    }
+  } else {
+    for (int i = 0; i < (*root).num_entries; i++) {
+      uint32_t blockno;
+      uint32_t extent;
+
+      unpack_entry((*root).entries[i], &blockno, &extent);
+      write(f, blockno);
+      write(f, extent);
+    }
+  }
+}
+
 void save_inodes(const char *master_file_table, struct inode *root) {
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
-  return;
+  FILE *f = fopen(master_file_table, "w");
+  save_inodes_recursive(f, root);
+  fclose(f);
 }
 
 struct inode *load_inodes(const char *master_file_table) {
