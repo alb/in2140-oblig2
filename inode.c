@@ -276,19 +276,19 @@ int delete_dir(struct inode *parent, struct inode *node) {
   return delete_inode(parent, node);
 }
 
-// Function that writes bytes to writer in little-endian order. 
-char * write(char *writer, uint32_t bytes) {
+// Function that writes bytes to writer in little-endian order.
+void write(FILE *f, uint32_t bytes) {
+  char writer[5];
+  writer[4] = '\0';
   for (int i = 0; i < 4; i++) {
-    *writer = (char) (bytes >> i*8);
-    writer++;
+    writer[i] = (char)(bytes >> i * 8);
   }
-
-  return writer;
+  fwrite(&writer, 1, 4, f);
 }
 
-// Function that writes inode and all its children to writer 
+// Function that writes inode and all its children to writer
 char *save_inodes_recursive(char *writer, struct inode *inode) {
-  // Write id and name-length to writer. 
+  // Write id and name-length to writer.
   // TODO: Should there be room for a termination character?
   writer = write(writer, (*inode).id);
   writer = write(writer, strlen((*inode).name));
@@ -308,25 +308,22 @@ char *save_inodes_recursive(char *writer, struct inode *inode) {
     if ((*inode).is_directory) {
       writer = write(writer, (*inode).entries[i].id);
       writer = write(writer, 0);
-    }
-    else {
+    } else {
       uint32_t blockno;
       uint32_t extent;
 
       unpack_entry((*inode).entries[i], blockno, extent);
       writer = write(writer, blockno);
-	    writer = write(writer, extent);
+      writer = write(writer, extent);
     }
-
   }
 
   // If the inode is not a directory, return
   if (!(*inode).is_directory)
     return writer;
 
-
   // If the inode is a directory, write each inode.
-  for (int i = 0; i < (*inode).num_entries;i++) {
+  for (int i = 0; i < (*inode).num_entries; i++) {
     writer = save_inodes_recursive(writer, (struct inode *)(*inode).entries[i]);
   }
 
@@ -334,7 +331,7 @@ char *save_inodes_recursive(char *writer, struct inode *inode) {
 }
 
 void save_inodes(const char *master_file_table, struct inode *root) {
-  *save_inodes_recursive((char *) master_file_table, root) = '\0';
+  FILE *f = fopen(master_file_table, "w");
 }
 
 struct inode *load_inodes(const char *master_file_table) {
