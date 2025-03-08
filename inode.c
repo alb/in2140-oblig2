@@ -411,7 +411,6 @@ struct inode *load_inodes(const char *master_file_table) {
       continue;
     }
 
-    printf("Name: %s\n", (*inodes[node]).name);
     for (int entry = 0; entry < (*inodes[node]).num_entries; entry++) {
       struct inode *entry_ref = resolve_inode_reference(
           (*inodes[node]).entries[entry], inodes, total_inodes);
