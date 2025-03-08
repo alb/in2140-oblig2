@@ -240,7 +240,20 @@ struct inode *create_dir(struct inode *parent, const char *name) {
 }
 
 struct inode *find_inode_by_name(struct inode *parent, const char *name) {
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
+  if (strcmp((*parent).name, name) == 0) {
+    return parent;
+  }
+
+  if ((*parent).is_directory) {
+    for (int entry = 0; entry < (*parent).num_entries; entry++) {
+      struct inode *node =
+          find_inode_by_name((struct inode *)(*parent).entries[entry], name);
+      if (node) {
+        return node;
+      }
+    }
+  }
+
   return NULL;
 }
 
