@@ -8,10 +8,10 @@
 #include "block_allocation.h"
 
 // Function that gets a new inode id incrementally.
-// *NOT IMPLEMENTED*
+int max_id = 0;
 uint32_t get_new_id() {
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
-  return 0;
+  max_id++;
+  return max_id;
 }
 
 // Function that combines blockno and extent into a single 64-bit variable.
@@ -420,6 +420,11 @@ struct inode *load_inodes(const char *master_file_table) {
   }
 
   for (int node = 0; node < total_inodes; node++) {
+    int id = (*inodes[node]).id;
+    if (id > max_id) {
+      max_id = id;
+    }
+
     if ((*inodes[node]).is_directory != 0x01) {
       continue;
     }
