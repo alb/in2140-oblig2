@@ -81,6 +81,10 @@ int delete_inode(struct inode *parent, struct inode *node) {
 // Returns 0 on success and -1 on failure.
 // upon success.
 int add_inode(struct inode *parent, struct inode *new) {
+  if (parent == NULL) {
+    return 0;
+  }
+
   uintptr_t *new_entries;
 
   // Reallocate entries array with room for one more entry
@@ -368,9 +372,8 @@ struct inode *read_next_inode(FILE *f) {
   uintptr_t *entries = malloc(sizeof(uint64_t) * num_entries);
   safe_fread(entries, sizeof(uint64_t), num_entries, f);
 
-  struct inode *root = malloc(sizeof(struct inode));
-
-  *root = (struct inode){
+  struct inode *node = malloc(sizeof(struct inode));
+  *node = (struct inode){
       .id = id,
       .name = name,
       .is_directory = is_directory,
@@ -380,7 +383,7 @@ struct inode *read_next_inode(FILE *f) {
       .entries = entries,
   };
 
-  return root;
+  return node;
 }
 
 long get_file_size(FILE *f) {
@@ -412,7 +415,7 @@ struct inode *load_inodes(const char *master_file_table) {
   while (ftell(f) != end_pos) {
     if ((inodes = realloc(
              inodes, (total_inodes + 1) * sizeof(struct inode *))) == NULL) {
-      fprintf(stderr, "Failed to allocate memory for new inode during parsing");
+      fprintf(stderr, "Failed to reallocate inodes list");
     };
 
     inodes[total_inodes] = read_next_inode(f);
