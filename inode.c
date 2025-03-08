@@ -331,35 +331,26 @@ void safe_fread(void *buffer, size_t size, size_t count, FILE *stream) {
 struct inode *read_next_inode(FILE *f) {
   uint32_t id;
   safe_fread(&id, sizeof(id), 1, f);
-  printf("ID: %d\n", id);
 
   uint32_t name_length;
   safe_fread(&name_length, sizeof(name_length), 1, f);
-  printf("Name Length: %d\n", name_length);
 
   char *name = malloc(name_length);
   safe_fread(name, sizeof(char), name_length, f);
-  name[name_length] = '\0';
-  printf("Name: %s\n", name);
 
   char is_directory;
   safe_fread(&is_directory, sizeof(is_directory), 1, f);
-  printf("is_directory: %d\n", is_directory == 0x01);
 
   char is_readonly;
   safe_fread(&is_readonly, sizeof(is_readonly), 1, f);
-  printf("is_readonly: %d\n", is_readonly == 0x01);
 
   uint32_t filesize = 0;
   if (is_directory == 0x00) {
     safe_fread(&filesize, sizeof(filesize), 1, f);
-    printf("File Size: %d\n", filesize);
   }
 
   uint32_t num_entries;
   safe_fread(&num_entries, sizeof(num_entries), 1, f);
-  printf("Entries: %d\n", num_entries);
-  printf("\n");
 
   uintptr_t *entries = malloc(sizeof(uint64_t) * num_entries);
   safe_fread(entries, sizeof(uint64_t), num_entries, f);
