@@ -1,10 +1,11 @@
 #include "inode.h"
-#include "block_allocation.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "block_allocation.h"
 
 // Function that gets a new inode id incrementally.
 // *NOT IMPLEMENTED*
@@ -22,17 +23,14 @@ uintptr_t create_entry(uint32_t blockno, uint32_t extent) {
 // Function that stores the blockno and extent in an entry to blockno and extent
 // pointers. Is NULL-safe.
 void unpack_entry(uintptr_t entry, uint32_t *blockno, uint32_t *extent) {
-  if (blockno != NULL)
-    *blockno = (uint32_t)(entry >> 32);
-  if (extent != NULL)
-    *extent = (uint32_t)entry;
+  if (blockno != NULL) *blockno = (uint32_t)(entry >> 32);
+  if (extent != NULL) *extent = (uint32_t)entry;
 }
 
 // Function that copies a string to heap and returns pointer to the new string
 char *copy_string(const char *s) {
   char *copy;
-  if ((copy = malloc(strlen(s) + 1)) == NULL)
-    return NULL;
+  if ((copy = malloc(strlen(s) + 1)) == NULL) return NULL;
 
   return strcpy(copy, s);
 }
@@ -44,8 +42,7 @@ void free_file(struct inode *file, uintptr_t *entries, char *name,
     uint32_t blockno;
     uint32_t extent;
     unpack_entry(entries[i], &blockno, &extent);
-    for (uint32_t j = 0; j < extent; j++)
-      free_block(blockno + j);
+    for (uint32_t j = 0; j < extent; j++) free_block(blockno + j);
   }
   free(file);
   free(entries);
@@ -58,7 +55,6 @@ void free_file(struct inode *file, uintptr_t *entries, char *name,
 // and when certain that node is in the directory parent.
 // Returns 0 on success and -1 on failure.
 int delete_inode(struct inode *parent, struct inode *node) {
-
   // Overwrite the pointer to the inode to delete with the one in the last
   // position. If the order of the entries is relevant, just bubble it up.
   for (int i = 0; i < (*parent).num_entries; i++) {
@@ -72,9 +68,9 @@ int delete_inode(struct inode *parent, struct inode *node) {
   (*parent).num_entries--;
 
   uintptr_t *new_entries_parent;
-  if ((new_entries_parent = realloc((*parent).entries,
-                                    (*parent).num_entries *
-                                        sizeof((*parent).entries[0]))) == NULL)
+  if ((new_entries_parent = realloc(
+           (*parent).entries,
+           (*parent).num_entries * sizeof((*parent).entries[0]))) == NULL)
     return -1;
 
   (*parent).entries = new_entries_parent;
@@ -88,9 +84,9 @@ int add_inode(struct inode *parent, struct inode *new) {
   uintptr_t *new_entries;
 
   // Reallocate entries array with room for one more entry
-  if ((new_entries = realloc((*parent).entries,
-                             ((*parent).num_entries + 1) *
-                                 sizeof((*parent).entries[0]))) == NULL)
+  if ((new_entries = realloc(
+           (*parent).entries,
+           ((*parent).num_entries + 1) * sizeof((*parent).entries[0]))) == NULL)
     return -1;
 
   // Add the new entry
@@ -128,8 +124,7 @@ uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
   // extent-1.
   else {
     // If allocating one block fails, return failure
-    if ((blockno = allocate_block(1)))
-      return NULL;
+    if ((blockno = allocate_block(1))) return NULL;
 
     // Adding allocated block to entries
     *entries = create_entry(blockno, 1);
@@ -168,8 +163,7 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
   uint32_t entire_file_blockno = (size_in_bytes + BLOCKSIZE - 1) / BLOCKSIZE;
 
   // If file already exists or size is 0, do nothing
-  if (find_inode_by_name(parent, name) != NULL || !size_in_bytes)
-    return NULL;
+  if (find_inode_by_name(parent, name) != NULL || !size_in_bytes) return NULL;
 
   if ((entries = malloc(sizeof(uintptr_t) * entire_file_blockno)) == NULL) {
     return NULL;
@@ -220,8 +214,7 @@ struct inode *create_dir(struct inode *parent, const char *name) {
   char *name_pointer = NULL;
 
   // If memory allocation fails, do nothing
-  if ((name_pointer = copy_string(name)) == NULL)
-    return NULL;
+  if ((name_pointer = copy_string(name)) == NULL) return NULL;
   if ((new_dir = malloc(sizeof(struct inode))) == NULL) {
     free(name_pointer);
     return NULL;
@@ -326,9 +319,129 @@ void save_inodes(const char *master_file_table, struct inode *root) {
   fclose(f);
 }
 
-struct inode *load_inodes(const char *master_file_table) {
-  fprintf(stderr, "%s is not implemented\n", __FUNCTION__);
+void safe_fread(void *buffer, size_t size, size_t count, FILE *stream) {
+  int rc = fread(buffer, size, count, stream);
+
+  if (rc != count) {
+    fprintf(stderr, "Failed to read from file\n");
+    exit(1);
+  }
+}
+
+struct inode *read_next_inode(FILE *f) {
+  uint32_t id;
+  safe_fread(&id, sizeof(id), 1, f);
+  printf("ID: %d\n", id);
+
+  uint32_t name_length;
+  safe_fread(&name_length, sizeof(name_length), 1, f);
+  printf("Name Length: %d\n", name_length);
+
+  char *name = malloc(name_length);
+  safe_fread(name, sizeof(char), name_length, f);
+  name[name_length] = '\0';
+  printf("Name: %s\n", name);
+
+  char is_directory;
+  safe_fread(&is_directory, sizeof(is_directory), 1, f);
+  printf("is_directory: %d\n", is_directory == 0x01);
+
+  char is_readonly;
+  safe_fread(&is_readonly, sizeof(is_readonly), 1, f);
+  printf("is_readonly: %d\n", is_readonly == 0x01);
+
+  uint32_t filesize = 0;
+  if (is_directory == 0x00) {
+    safe_fread(&filesize, sizeof(filesize), 1, f);
+    printf("File Size: %d\n", filesize);
+  }
+
+  uint32_t num_entries;
+  safe_fread(&num_entries, sizeof(num_entries), 1, f);
+  printf("Entries: %d\n", num_entries);
+  printf("\n");
+
+  uintptr_t *entries = malloc(sizeof(uint64_t) * num_entries);
+  safe_fread(entries, sizeof(uint64_t), num_entries, f);
+
+  struct inode *root = malloc(sizeof(struct inode));
+
+  *root = (struct inode){
+      .id = id,
+      .name = name,
+      .is_directory = is_directory,
+      .is_readonly = is_readonly,
+      .filesize = filesize,
+      .num_entries = num_entries,
+      .entries = entries,
+  };
+
+  return root;
+}
+
+long get_file_size(FILE *f) {
+  fseek(f, 0, SEEK_END);
+  long end_pos = ftell(f);
+  fseek(f, 0, SEEK_SET);
+
+  return end_pos;
+}
+
+struct inode *resolve_inode_reference(uint32_t id, struct inode **inodes,
+                                      int total_inodes) {
+  for (int node = 0; node < total_inodes; node++) {
+    if ((*inodes[node]).id == id) {
+      return inodes[node];
+    }
+  }
+
   return NULL;
+}
+
+struct inode *load_inodes(const char *master_file_table) {
+  FILE *f = fopen(master_file_table, "rb");
+  long end_pos = get_file_size(f);
+
+  int total_inodes = 0;
+  struct inode **inodes = NULL;
+
+  while (ftell(f) != end_pos) {
+    if ((inodes = realloc(
+             inodes, (total_inodes + 1) * sizeof(struct inode *))) == NULL) {
+      fprintf(stderr, "Failed to allocate memory for new inode during parsing");
+    };
+
+    inodes[total_inodes] = read_next_inode(f);
+    total_inodes++;
+  }
+
+  for (int node = 0; node < total_inodes; node++) {
+    if ((*inodes[node]).is_directory != 0x01) {
+      continue;
+    }
+
+    printf("Name: %s\n", (*inodes[node]).name);
+    for (int entry = 0; entry < (*inodes[node]).num_entries; entry++) {
+      struct inode *entry_ref = resolve_inode_reference(
+          (*inodes[node]).entries[entry], inodes, total_inodes);
+
+      if (entry_ref == NULL) {
+        fprintf(stderr,
+                "Failed to resolve inode reference #%d for directory %s", entry,
+                (*inodes[node]).name);
+        exit(1);
+      }
+
+      (*inodes[node]).entries[entry] = (uintptr_t)entry_ref;
+    }
+  }
+
+  struct inode *root = inodes[0];
+
+  free(inodes);
+  fclose(f);
+
+  return root;
 }
 
 void fs_shutdown(struct inode *inode) {
@@ -359,10 +472,8 @@ void debug_fs(struct inode *node) {
 }
 
 static void debug_fs_tree_walk(struct inode *node, char *table) {
-  if (node == NULL)
-    return;
-  for (int i = 0; i < indent; i++)
-    printf("  ");
+  if (node == NULL) return;
+  for (int i = 0; i < indent; i++) printf("  ");
   if (node->is_directory) {
     printf("%s (id %d)\n", node->name, node->id);
     indent++;
@@ -391,8 +502,7 @@ static void debug_fs_tree_walk(struct inode *node, char *table) {
 static void debug_fs_print_table(const char *table) {
   printf("Blocks recorded in master file table:");
   for (int i = 0; i < NUM_BLOCKS; i++) {
-    if (i % 20 == 0)
-      printf("\n%03d: ", i);
+    if (i % 20 == 0) printf("\n%03d: ", i);
     printf("%d", table[i]);
   }
   printf("\n\n");
