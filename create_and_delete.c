@@ -1,7 +1,7 @@
+#include <stdio.h>
+
 #include "block_allocation.h"
 #include "inode.h"
-
-#include <stdio.h>
 
 int main(int argc, char *argv[]) {
   if (argc != 3) {
@@ -64,28 +64,28 @@ int main(int argc, char *argv[]) {
 
   printf("Trying to delete file gcc from / (should fail)\n");
   success = delete_file(f_gcc, root);
-  printf("Deletion %s\n", success ? "succeeded" : "failed");
+  printf("Deletion %s\n", success == EXIT_SUCCESS ? "succeeded" : "failed");
 
   printf(
       "Trying to delete file oblig.tgz from /home/in2140 (should succeed)\n");
   success = delete_file(d_in2140, d_obligz);
-  printf("Deletion %s\n", success ? "succeeded" : "failed");
+  printf("Deletion %s\n", success == EXIT_SUCCESS ? "succeeded" : "failed");
 
   printf("Trying to delete file nvcc from /usr/local/bin (should succeed)\n");
   success = delete_file(dir_lbin, f_nvcc);
-  printf("Deletion %s\n", success ? "succeeded" : "failed");
+  printf("Deletion %s\n", success == EXIT_SUCCESS ? "succeeded" : "failed");
 
   printf("Trying to delete directory etc from / (should fail)\n");
   success = delete_dir(dir_etc, root);
-  printf("Deletion %s\n", success ? "succeeded" : "failed");
+  printf("Deletion %s\n", success == EXIT_SUCCESS ? "succeeded" : "failed");
 
   printf("Trying to delete file hosts from /etc (should succeed)\n");
-  success = delete_file(f_hosts, dir_etc);
-  printf("Deletion %s\n", success ? "succeeded" : "failed");
+  success = delete_file(dir_etc, f_hosts);
+  printf("Deletion %s\n", success == EXIT_SUCCESS ? "succeeded" : "failed");
 
   printf("Trying to delete directory etc from / (should succeed)\n");
-  success = delete_dir(dir_etc, root);
-  printf("Deletion %s\n", success ? "succeeded" : "failed");
+  success = delete_dir(root, dir_etc);
+  printf("Deletion %s\n", success == EXIT_SUCCESS ? "succeeded" : "failed");
 
   debug_fs(root);
   debug_disk();
