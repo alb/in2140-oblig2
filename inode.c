@@ -68,9 +68,9 @@ int delete_inode(struct inode *parent, struct inode *node) {
   (*parent).num_entries--;
 
   uintptr_t *new_entries_parent;
-  if ((new_entries_parent = realloc(
-           (*parent).entries,
-           (*parent).num_entries * sizeof((*parent).entries[0]))) == NULL)
+  if ((new_entries_parent = realloc((*parent).entries,
+                                    (*parent).num_entries *
+                                        sizeof((*parent).entries[0]))) == NULL)
     return -1;
 
   (*parent).entries = new_entries_parent;
@@ -88,9 +88,9 @@ int add_inode(struct inode *parent, struct inode *new) {
   uintptr_t *new_entries;
 
   // Reallocate entries array with room for one more entry
-  if ((new_entries = realloc(
-           (*parent).entries,
-           ((*parent).num_entries + 1) * sizeof((*parent).entries[0]))) == NULL)
+  if ((new_entries = realloc((*parent).entries,
+                             ((*parent).num_entries + 1) *
+                                 sizeof((*parent).entries[0]))) == NULL)
     return -1;
 
   // Add the new entry
@@ -271,9 +271,11 @@ int delete_file(struct inode *parent, struct inode *node) {
       find_inode_by_name(parent, (*node).name) == NULL)
     return -1;
 
+  if (delete_inode(parent, node)) return -1;
+
   free_file(node, (*node).entries, (*node).name, (*node).num_entries);
 
-  return delete_inode(parent, node);
+  return 0;
 }
 
 // Function that deletes an empty directory.
@@ -416,8 +418,8 @@ struct inode *load_inodes(const char *master_file_table) {
   struct inode **inodes = NULL;
 
   while (ftell(f) != end_pos) {
-    if ((inodes = realloc(
-             inodes, (total_inodes + 1) * sizeof(struct inode *))) == NULL) {
+    if ((inodes = realloc(inodes, (total_inodes + 1) *
+                                      sizeof(struct inode *))) == NULL) {
       fprintf(stderr, "Failed to reallocate inodes list");
     };
 
