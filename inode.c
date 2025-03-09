@@ -8,7 +8,7 @@
 #include "block_allocation.h"
 
 // Function that gets a new inode id incrementally.
-int max_id = 0;
+int max_id = -1;
 uint32_t get_new_id() {
   max_id++;
   return max_id;
