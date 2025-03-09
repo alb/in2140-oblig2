@@ -67,13 +67,18 @@ int delete_inode(struct inode *parent, struct inode *node) {
 
   (*parent).num_entries--;
 
-  uintptr_t *new_entries_parent;
-  if ((new_entries_parent = realloc((*parent).entries,
-                                    (*parent).num_entries *
-                                        sizeof((*parent).entries[0]))) == NULL)
-    return -1;
+  if (!(*parent).num_entries) {
+    free((*parent).entries);
+    (*parent).entries = NULL;
+  } else {
+    uintptr_t *new_entries_parent;
+    if ((new_entries_parent = realloc(
+             (*parent).entries,
+             (*parent).num_entries * sizeof((*parent).entries[0]))) == NULL)
+      return -1;
 
-  (*parent).entries = new_entries_parent;
+    (*parent).entries = new_entries_parent;
+  }
   return 0;
 }
 
@@ -288,7 +293,11 @@ int delete_dir(struct inode *parent, struct inode *node) {
 
   free((*node).name);
 
-  return delete_inode(parent, node);
+  if (delete_inode(parent, node)) return -1;
+
+  free(node);
+
+  return 0;
 }
 
 // Function that writes bytes to writer in little-endian order.
