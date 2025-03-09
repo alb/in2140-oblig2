@@ -8,7 +8,7 @@
 #include "block_allocation.h"
 
 // Function that gets a new inode id incrementally.
-int max_id = 0;
+int max_id = -1;
 uint32_t get_new_id() {
   max_id++;
   return max_id;
@@ -68,9 +68,9 @@ int delete_inode(struct inode *parent, struct inode *node) {
   (*parent).num_entries--;
 
   uintptr_t *new_entries_parent;
-  if ((new_entries_parent = realloc(
-           (*parent).entries,
-           (*parent).num_entries * sizeof((*parent).entries[0]))) == NULL)
+  if ((new_entries_parent = realloc((*parent).entries,
+                                    (*parent).num_entries *
+                                        sizeof((*parent).entries[0]))) == NULL)
     return -1;
 
   (*parent).entries = new_entries_parent;
@@ -88,9 +88,9 @@ int add_inode(struct inode *parent, struct inode *new) {
   uintptr_t *new_entries;
 
   // Reallocate entries array with room for one more entry
-  if ((new_entries = realloc(
-           (*parent).entries,
-           ((*parent).num_entries + 1) * sizeof((*parent).entries[0]))) == NULL)
+  if ((new_entries = realloc((*parent).entries,
+                             ((*parent).num_entries + 1) *
+                                 sizeof((*parent).entries[0]))) == NULL)
     return -1;
 
   // Add the new entry
@@ -114,7 +114,7 @@ uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
   uint32_t extent = (blocks_to_allocate <= 4) ? blocks_to_allocate : 4;
 
   // If successfully allocating extent blocks, add to entries
-  if (!(blockno = allocate_block(extent))) {
+  if ((blockno = allocate_block(extent)) != -1) {
     *entries = create_entry(blockno, extent);
     entries++;
     (*num_entries)++;
@@ -144,9 +144,8 @@ uintptr_t *allocate_blocks(uintptr_t *entries, uint32_t *num_entries,
   }
 
   // If there are more blocks to allocate, continue recursively
-  if (!(blocks_to_allocate - extent)) {
-    return allocate_blocks(entries + extent, num_entries,
-                           blocks_to_allocate - extent);
+  if ((blocks_to_allocate - extent)) {
+    return allocate_blocks(entries, num_entries, blocks_to_allocate - extent);
   }
 
   // If there are no more blocks to allocate, return success.
@@ -167,7 +166,9 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
   uint32_t entire_file_blockno = (size_in_bytes + BLOCKSIZE - 1) / BLOCKSIZE;
 
   // If file already exists or size is 0, do nothing
-  if (find_inode_by_name(parent, name) != NULL || !size_in_bytes) return NULL;
+  if (find_inode_by_name(parent, name) != NULL || !size_in_bytes) {
+    return NULL;
+  }
 
   if ((entries = malloc(sizeof(uintptr_t) * entire_file_blockno)) == NULL) {
     return NULL;
@@ -201,9 +202,9 @@ struct inode *create_file(struct inode *parent, const char *name, char readonly,
                              .is_readonly = readonly,
                              .filesize = (uint32_t)size_in_bytes,
                              .num_entries = num_entries,
-                             .entries = entries};
+                             .entries = realloc_entries};
 
-  if (!add_inode(parent, new_file)) {
+  if (add_inode(parent, new_file)) {
     free_file(new_file, entries, name_pointer, num_entries);
     return NULL;
   }
@@ -234,7 +235,7 @@ struct inode *create_dir(struct inode *parent, const char *name) {
       .entries = NULL,
   };
 
-  if (!add_inode(parent, new_dir)) {
+  if (add_inode(parent, new_dir) && parent != NULL) {
     free(name_pointer);
     free(new_dir);
     return NULL;
@@ -417,8 +418,8 @@ struct inode *load_inodes(const char *master_file_table) {
   struct inode **inodes = NULL;
 
   while (ftell(f) != end_pos) {
-    if ((inodes = realloc(
-             inodes, (total_inodes + 1) * sizeof(struct inode *))) == NULL) {
+    if ((inodes = realloc(inodes, (total_inodes + 1) *
+                                      sizeof(struct inode *))) == NULL) {
       fprintf(stderr, "Failed to reallocate inodes list");
     };
 
