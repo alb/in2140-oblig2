@@ -67,9 +67,10 @@ int delete_inode(struct inode *parent, struct inode *node) {
 
   (*parent).num_entries--;
 
-  if (!(*parent).num_entries)
+  if (!(*parent).num_entries) {
     free((*parent).entries);
-  else {
+    (*parent).entries = NULL;
+  } else {
     uintptr_t *new_entries_parent;
     if ((new_entries_parent = realloc(
              (*parent).entries,
